@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Шпион</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --card-bg: #1a1a26;
+  --accent: #c8f04d;
+  --accent2: #f04d8a;
+  --spy-color: #f04d4d;
+  --text: #f0f0f5;
+  --muted: #6b6b80;
+  --border: rgba(255,255,255,0.07);
+}
+
+html, body {
+  height: 100%; width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Manrope', sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 9999; opacity: 0.35;
+}
+
+.screen {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.screen.hidden { opacity: 0; pointer-events: none; transform: scale(0.97); }
+
+/* ══════════════════════════════
+   SETUP
+══════════════════════════════ */
+#setup { gap: 22px; justify-content: center; overflow-y: auto; }
+
+.logo {
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(30px, 9vw, 50px);
+  font-weight: 900;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+.logo span { color: var(--accent); }
+
+.subtitle {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-top: -12px;
+}
+
+.form-block {
+  width: 100%; max-width: 400px;
+  display: flex; flex-direction: column;
+  gap: 14px;
+}
+
+.field-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+  display: block;
+}
+
+input[type="text"] {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  color: var(--text);
+  font-family: 'Manrope', sans-serif;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+input[type="text"]:focus { border-color: var(--accent); }
+input[type="text"]::placeholder { color: var(--muted); }
+
+.add-row { display: flex; gap: 8px; }
+.add-row input { flex: 1; }
+
+.btn-icon {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: 50px; height: 50px;
+  color: var(--accent);
+  font-size: 24px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.18s, border-color 0.18s;
+  flex-shrink: 0;
+}
+.btn-icon:hover { background: var(--card-bg); border-color: var(--accent); }
+
+.players-chips { display: flex; flex-wrap: wrap; gap: 8px; min-height: 34px; }
+
+.chip {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 6px 10px 6px 14px;
+  font-size: 13px;
+  display: flex; align-items: center; gap: 8px;
+  animation: popIn 0.16s ease;
+}
+@keyframes popIn {
+  from { opacity:0; transform:scale(0.75); }
+  to   { opacity:1; transform:scale(1); }
+}
+.chip-del {
+  background: none; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 13px; line-height: 1; padding: 0;
+  transition: color 0.15s;
+}
+.chip-del:hover { color: var(--accent2); }
+
+.cat-tabs { display: flex; gap: 8px; }
+.cat-tab {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 4px;
+  color: var(--muted);
+  font-family: 'Manrope', sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.16s;
+}
+.cat-tab.active {
+  background: var(--accent);
+  color: #0a0a0f;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+
+.err { color: var(--accent2); font-size: 12px; text-align: center; min-height: 16px; }
+
+.btn-primary {
+  width: 100%;
+  background: var(--accent);
+  color: #0a0a0f;
+  font-family: 'Unbounded', sans-serif;
+  font-size: 14px; font-weight: 700;
+  letter-spacing: 0.05em;
+  border: none; border-radius: 14px;
+  padding: 18px;
+  cursor: pointer;
+  transition: transform 0.12s, opacity 0.12s;
+}
+.btn-primary:active { transform: scale(0.97); }
+.btn-primary:disabled { opacity: 0.25; cursor: not-allowed; }
+
+/* ══════════════════════════════
+   PASS
+══════════════════════════════ */
+#pass { gap: 0; }
+
+.pass-glow {
+  position: absolute;
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(200,240,77,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.pass-counter {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 28px;
+}
+
+.pass-name {
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(26px, 8vw, 44px);
+  font-weight: 900;
+  text-align: center;
+  margin-bottom: 10px;
+  line-height: 1.1;
+}
+
+.pass-sub {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 44px;
+  max-width: 260px;
+  line-height: 1.5;
+}
+
+.btn-pass {
+  background: var(--card-bg);
+  border: 1px solid rgba(200,240,77,0.2);
+  border-radius: 16px;
+  padding: 18px 48px;
+  color: var(--accent);
+  font-family: 'Unbounded', sans-serif;
+  font-size: 14px; font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, transform 0.12s;
+}
+.btn-pass:active { transform: scale(0.96); }
+.btn-pass:hover  { background: #1f1f2e; border-color: var(--accent); }
+
+/* ══════════════════════════════
+   FLIP
+══════════════════════════════ */
+#flip { gap: 0; }
+
+.flip-counter {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+.progress-bar-wrap {
+  width: min(320px, 82vw);
+  height: 3px;
+  background: var(--border);
+  border-radius: 99px;
+  margin-bottom: 28px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width 0.35s ease;
+}
+
+.card-scene {
+  width: min(310px, 82vw);
+  height: min(390px, 55vh);
+  perspective: 1400px;
+  cursor: pointer;
+  margin-bottom: 24px;
+}
+
+.card-body {
+  width: 100%; height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.4,0,0.2,1);
+  border-radius: 24px;
+}
+.card-body.flipped { transform: rotateY(180deg); }
+
+.card-side {
+  position: absolute; inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 24px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 13px; padding: 28px 22px;
+  overflow: hidden;
+}
+
+.card-front {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+.card-front::before {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse at 35% 25%, rgba(200,240,77,0.07) 0%, transparent 60%);
+  pointer-events:none;
+}
+.card-stripe {
+  position:absolute; inset:0; opacity:0.025;
+  background-image: repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 1px,transparent 14px);
+  pointer-events:none;
+}
+
+.front-avatar {
+  width: 62px; height: 62px;
+  border-radius: 50%;
+  background: rgba(200,240,77,0.08);
+  border: 1.5px solid rgba(200,240,77,0.18);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; position: relative;
+  animation: avatarPulse 2.5s infinite;
+}
+@keyframes avatarPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(200,240,77,0.12); }
+  50%      { box-shadow: 0 0 0 12px rgba(200,240,77,0); }
+}
+
+.front-name {
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(18px, 5vw, 26px);
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  position: relative;
+}
+
+.front-hint {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  position: relative;
+}
+
+.card-back { transform: rotateY(180deg); }
+
+.back-spy {
+  background: linear-gradient(145deg,#1a0a0a,#280c14);
+  border: 1px solid rgba(240,77,77,0.28);
+}
+.back-spy::before {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse at 50% 28%, rgba(240,77,77,0.13) 0%, transparent 65%);
+  pointer-events:none;
+}
+.back-civ {
+  background: linear-gradient(145deg,#0c180a,#101d0d);
+  border: 1px solid rgba(200,240,77,0.18);
+}
+.back-civ::before {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse at 50% 28%, rgba(200,240,77,0.09) 0%, transparent 65%);
+  pointer-events:none;
+}
+
+.back-icon {
+  font-size: 52px; position: relative;
+  animation: iconBounce 0.45s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes iconBounce {
+  from { transform: scale(0.3) rotate(-20deg); opacity:0; }
+  to   { transform: scale(1) rotate(0); opacity:1; }
+}
+
+.back-role {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 10px; letter-spacing: 0.22em;
+  text-transform: uppercase; position: relative;
+}
+.back-spy .back-role { color: var(--spy-color); }
+.back-civ .back-role { color: var(--accent); }
+
+.back-word {
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(22px,6vw,32px);
+  font-weight: 900;
+  text-align: center; line-height: 1.1; position: relative;
+}
+.back-spy .back-word { color: var(--spy-color); }
+.back-civ .back-word { color: var(--accent); }
+
+.back-desc {
+  color: var(--muted);
+  font-size: 12px; text-align: center;
+  position: relative; max-width: 210px; line-height: 1.5;
+}
+
+.btn-next {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 36px;
+  color: var(--text);
+  font-family: 'Unbounded', sans-serif;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  opacity: 0; pointer-events: none;
+  transform: translateY(10px);
+  transition: opacity 0s, transform 0s;
+}
+.btn-next.visible {
+  opacity: 1; pointer-events: auto;
+  transform: translateY(0);
+  transition: opacity 0.25s 0.25s ease, transform 0.25s 0.25s ease,
+              background 0.18s, border-color 0.18s, color 0.18s;
+}
+.btn-next:hover { background: var(--card-bg); border-color: var(--accent); color: var(--accent); }
+.btn-next:active { transform: scale(0.96) !important; }
+
+/* ══════════════════════════════
+   DISCUSS — экран обсуждения
+══════════════════════════════ */
+#discuss { gap: 0; padding: 28px 24px; overflow-y: auto; }
+
+.discuss-label {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.discuss-title {
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(18px, 5vw, 26px);
+  font-weight: 900;
+  text-align: center;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.discuss-sub {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+
+.questions-grid {
+  width: 100%; max-width: 400px;
+  display: flex; flex-direction: column;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.q-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex; align-items: flex-start; gap: 12px;
+  animation: popIn 0.2s ease both;
+}
+
+.q-num {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 20px;
+  margin-top: 1px;
+}
+
+.q-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.discuss-actions {
+  width: 100%; max-width: 400px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.btn-reveal {
+  width: 100%;
+  background: var(--spy-color);
+  color: #fff;
+  font-family: 'Unbounded', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 0.05em;
+  border: none; border-radius: 14px;
+  padding: 17px;
+  cursor: pointer;
+  transition: transform 0.12s, opacity 0.12s;
+}
+.btn-reveal:active { transform: scale(0.97); }
+
+.btn-more-q {
+  width: 100%;
+  background: transparent;
+  color: var(--muted);
+  font-family: 'Manrope', sans-serif;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.btn-more-q:hover { border-color: var(--muted); color: var(--text); }
+
+/* ══════════════════════════════
+   END
+══════════════════════════════ */
+#end { gap: 24px; overflow-y: auto; }
+
+.end-emoji { font-size: 58px; }
+
+.end-title {
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(18px, 5vw, 28px);
+  font-weight: 900;
+  text-align: center; line-height: 1.2;
+}
+
+.end-word-reveal {
+  background: var(--surface);
+  border: 1px solid rgba(200,240,77,0.2);
+  border-radius: 14px;
+  padding: 14px 24px;
+  text-align: center;
+  width: 100%; max-width: 340px;
+}
+.end-word-label {
+  font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 4px;
+}
+.end-word-value {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 20px; font-weight: 900;
+  color: var(--accent);
+}
+
+.result-list {
+  display: flex; flex-direction: column; gap: 8px;
+  width: 100%; max-width: 340px;
+}
+
+.result-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 16px;
+  animation: popIn 0.2s ease both;
+}
+.result-row.is-spy {
+  background: rgba(240,77,77,0.07);
+  border-color: rgba(240,77,77,0.28);
+}
+
+.result-emo { font-size: 22px; }
+.result-name { font-weight: 600; font-size: 14px; flex: 1; }
+.result-badge {
+  font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; font-weight: 700;
+  padding: 3px 10px; border-radius: 100px;
+}
+.result-row.is-spy .result-badge {
+  background: rgba(240,77,77,0.16); color: var(--spy-color);
+}
+.result-row:not(.is-spy) .result-badge {
+  background: rgba(200,240,77,0.1); color: var(--accent);
+}
+
+.btn-restart {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 15px 44px;
+  color: var(--text);
+  font-family: 'Unbounded', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.btn-restart:hover { border-color: var(--accent); color: var(--accent); }
+.btn-restart:active { transform: scale(0.97); }
+
+.spy-count-row { display: flex; gap: 8px; }
+.spy-btn {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 4px;
+  color: var(--muted);
+  font-family: 'Unbounded', sans-serif;
+  font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.16s;
+}
+.spy-btn.active {
+  background: rgba(240,77,77,0.15);
+  color: var(--spy-color);
+  border-color: rgba(240,77,77,0.4);
+}
+</style>
+</head>
+<body>
+
+<!-- ══ SETUP ══ -->
+<div class="screen" id="setup">
+  <div class="logo">Шпи<span>о</span>н</div>
+  <p class="subtitle">Игра для компании</p>
+  <div class="form-block">
+    <div>
+      <span class="field-label">Игроки (минимум 3)</span>
+      <div class="add-row">
+        <input type="text" id="playerInput" placeholder="Имя игрока…" maxlength="18" autocomplete="off">
+        <button class="btn-icon" id="addBtn">+</button>
+      </div>
+    </div>
+    <div class="players-chips" id="chips"></div>
+    <div>
+      <span class="field-label">Категория</span>
+      <div class="cat-tabs" id="catTabs">
+        <button class="cat-tab active" data-cat="easy">🟢 Базово</button>
+        <button class="cat-tab" data-cat="medium">🟡 Процессы</button>
+        <button class="cat-tab" data-cat="hard">🔴 Хардкор</button>
+      </div>
+    </div>
+    <div>
+      <span class="field-label">Количество шпионов</span>
+      <div class="spy-count-row" id="spyCountRow"></div>
+    </div>
+    <p class="err" id="err"></p>
+    <button class="btn-primary" id="startBtn" disabled>Начать игру</button>
+  </div>
+</div>
+
+<!-- ══ PASS ══ -->
+<div class="screen hidden" id="pass">
+  <div class="pass-glow"></div>
+  <div class="pass-counter" id="passCounter"></div>
+  <div class="pass-name" id="passName"></div>
+  <div class="pass-sub">Возьми телефон и никому не показывай экран</div>
+  <button class="btn-pass" id="passBtn">Я готов →</button>
+</div>
+
+<!-- ══ FLIP ══ -->
+<div class="screen hidden" id="flip">
+  <div class="flip-counter" id="flipCounter"></div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progressFill"></div>
+  </div>
+  <div class="card-scene" id="cardScene">
+    <div class="card-body" id="cardBody">
+      <div class="card-side card-front">
+        <div class="card-stripe"></div>
+        <div class="front-avatar">👤</div>
+        <div class="front-name" id="flipName"></div>
+        <div class="front-hint">Нажми чтобы узнать роль</div>
+      </div>
+      <div class="card-side card-back" id="cardBack">
+        <div class="back-icon" id="backIcon"></div>
+        <div class="back-role" id="backRole"></div>
+        <div class="back-word" id="backWord"></div>
+        <div class="back-desc" id="backDesc"></div>
+      </div>
+    </div>
+  </div>
+  <button class="btn-next" id="nextBtn">Передать →</button>
+</div>
+
+<!-- ══ DISCUSS ══ -->
+<div class="screen hidden" id="discuss">
+  <div class="discuss-label">Время обсуждения</div>
+  <div class="discuss-title">Задайте друг другу вопросы</div>
+  <div class="discuss-sub">Каждый отвечает по очереди. Шпион пытается не раскрыться.</div>
+  <div class="questions-grid" id="questionsGrid"></div>
+  <div class="discuss-actions">
+    <button class="btn-more-q" id="moreQBtn">🔄 Другие вопросы</button>
+    <button class="btn-reveal" id="revealBtn">🕵️ Раскрыть шпиона</button>
+  </div>
+</div>
+
+<!-- ══ END ══ -->
+<div class="screen hidden" id="end">
+  <div class="end-emoji">🎭</div>
+  <div class="end-title" id="endTitle">Игра окончена!</div>
+  <div class="end-word-reveal">
+    <div class="end-word-label">Слово было</div>
+    <div class="end-word-value" id="endWord"></div>
+  </div>
+  <div class="result-list" id="resultList"></div>
+  <button class="btn-restart" id="restartBtn">↩ Новая игра</button>
+</div>
+
+<script>
+// ══ ДАННЫЕ ══
+
+// Категории: easy = базовые IT-понятия (знает любой), medium = процессы/культура, hard = хардкор для разрабов
+const WORDS = {
+  easy: [
+    'Баг','Деплой','Апдейт','Бэкап','Дедлайн','Спринт','Митинг','Логин','Пароль',
+    'Интерфейс','Сервер','Клиент','База данных','Поиск','Фильтр','Уведомление',
+    'Профиль','Настройки','Загрузка','Ошибка','Версия','Лицензия','Подписка',
+    'Облако','Кэш','Токен','Сессия','Куки','Форма','Кнопка',
+  ],
+  medium: [
+    'Ретроспектива','Стендап','Код-ревью','Пул-реквест','Бэклог','Релиз','Хотфикс',
+    'Рефакторинг','Тест','Стейджинг','Продакшн','Мёрдж','Бранч','Коммит','Тикет',
+    'Эпик','Velocity','Roadmap','Онбординг','Оффбординг','Перформанс-ревью',
+    'Технический долг','MVP','A/B тест','Фича','Кранч','Митинг-культура',
+    'Документация','Мониторинг','Алерт',
+  ],
+  hard: [
+    'Дедлок','Гонка данных','Мемори-лик','Хип','Стек','Мьютекс','Семафор',
+    'Big O','Рекурсия','Хэш-коллизия','Шардинг','Репликация','Индекс','Транзакция',
+    'ACID','CAP-теорема','Eventual consistency','Инверсия зависимостей','Полиморфизм',
+    'Дженерики','Замыкание','Карри','Монада','Иммутабельность','Event loop',
+    'Промис','Middleware','Сериализация','Десериализация','Оркестрация',
+  ],
+};
+
+// 60 вопросов — IT-тематика, подходят для любого уровня
+const ALL_QUESTIONS = [
+  // 🔎 Описание / ассоциации
+  'Опиши это одним словом, но не называй напрямую.',
+  'Какой эмодзи лучше всего описывает это?',
+  'Это ближе к фронтенду или бэкенду?',
+  'Это инструмент, процесс или концепция?',
+  'Назови три слова-ассоциации, не раскрывая суть.',
+  'Это что-то хорошее или обычно вызывает стресс?',
+  'Если бы это было персонажем в фильме — кем бы оно было?',
+  'Назови одно прилагательное которое это лучше всего описывает.',
+  'Это ты встречаешь каждый день или редко?',
+  'Это что-то видимое пользователю или скрытое внутри?',
+
+  // ⏱️ Время / частота
+  'Это происходит быстро или требует времени?',
+  'Это случается до деплоя или после?',
+  'Это существовало 20 лет назад?',
+  'Это актуально прямо сейчас в индустрии?',
+  'Это связано с началом проекта или его концом?',
+
+  // 🧑‍💻 Люди / команда
+  'Кто в команде чаще всего работает с этим — разраб, менеджер или дизайнер?',
+  'Это делается в одиночку или командой?',
+  'Это вызывает споры в команде?',
+  'Junior знает об этом или только Senior?',
+  'Это есть в описании вакансий?',
+
+  // 💻 Технические
+  'Это связано с производительностью?',
+  'Это может сломать прод?',
+  'Это требует написания кода или нет?',
+  'Это связано с памятью или процессором?',
+  'Это может произойти в рантайме?',
+  'Это синхронное или асинхронное?',
+  'Это ближе к алгоритмам или к архитектуре?',
+  'Это можно протестировать автотестом?',
+  'Это есть в любом языке программирования?',
+  'Это есть в git?',
+
+  // 📋 Процессы / Agile
+  'Это часть Agile или Waterfall?',
+  'Это происходит на ежедневном стендапе?',
+  'Это связано с оценкой задач?',
+  'Это фиксируется в Jira или похожем трекере?',
+  'Это помогает команде или замедляет её?',
+  'Это происходит в конце спринта?',
+  'Это относится к управлению продуктом?',
+  'Это делается ради качества или ради скорости?',
+
+  // 🌐 Инфраструктура / DevOps
+  'Это связано с деплоем?',
+  'Это есть в облаке?',
+  'Это нужно настраивать вручную или автоматически?',
+  'Это связано с безопасностью?',
+  'Это мониторится в реальном времени?',
+  'Это может упасть в 3 часа ночи?',
+
+  // 😅 Эмоции / культура
+  'Это вызывает у тебя радость или боль?',
+  'Это часто откладывают на потом?',
+  'Это обсуждают на конференциях?',
+  'Это есть в любой айти компании?',
+  'Это стало мемом в программистском комьюнити?',
+  'Про это написаны книги?',
+  'Это чаще делают правильно или неправильно?',
+  'Это есть в резюме хорошего разработчика?',
+
+  // 🤔 Угадайка / логика
+  'Если убрать это — что сломается первым?',
+  'Это причина или следствие бага?',
+  'Без этого невозможно запустить продакшн?',
+  'Это появляется когда что-то идёт не так?',
+  'Это решает проблему или создаёт новую?',
+  'Это делает код лучше или только кажется?',
+];
+
+// ══ СОСТОЯНИЕ ══
+let players      = JSON.parse(localStorage.getItem('spy_players') || '[]');
+let selectedCat  = 'easy';
+let spyCount     = 1;
+let gameData     = [];
+let currentIdx   = 0;
+let cardFlipped  = false;
+let usedQIndexes = [];
+
+const $ = id => document.getElementById(id);
+
+const screens = { setup: $('setup'), pass: $('pass'), flip: $('flip'), discuss: $('discuss'), end: $('end') };
+
+function show(name) {
+  Object.entries(screens).forEach(([k, el]) => el.classList.toggle('hidden', k !== name));
+}
+
+// ══ SETUP ══
+$('catTabs').addEventListener('click', e => {
+  const t = e.target.closest('.cat-tab');
+  if (!t) return;
+  document.querySelectorAll('.cat-tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  selectedCat = t.dataset.cat;
+});
+
+// Spy count buttons — рендерим динамически в зависимости от числа игроков
+function renderSpyBtns() {
+  const row = $('spyCountRow');
+  row.innerHTML = '';
+  // максимум шпионов = половина игроков, но не больше 3
+  const max = Math.min(3, Math.floor(players.length / 2)) || 1;
+  if (spyCount > max) spyCount = 1;
+  for (let i = 1; i <= max; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'spy-btn' + (i === spyCount ? ' active' : '');
+    btn.textContent = i === 1 ? '1 шпион' : `${i} шпиона`;
+    btn.dataset.n = i;
+    row.appendChild(btn);
+  }
+}
+
+$('spyCountRow').addEventListener('click', e => {
+  const btn = e.target.closest('.spy-btn');
+  if (!btn) return;
+  spyCount = +btn.dataset.n;
+  document.querySelectorAll('.spy-btn').forEach(b => b.classList.toggle('active', +b.dataset.n === spyCount));
+});
+
+function addPlayer() {
+  const name = $('playerInput').value.trim();
+  $('err').textContent = '';
+  if (!name) return;
+  if (players.includes(name)) { $('err').textContent = 'Такой игрок уже есть'; return; }
+  if (players.length >= 10)   { $('err').textContent = 'Максимум 10 игроков'; return; }
+  players.push(name);
+  localStorage.setItem('spy_players', JSON.stringify(players));
+  $('playerInput').value = '';
+  $('playerInput').focus();
+  renderChips();
+  renderSpyBtns();
+}
+
+$('addBtn').addEventListener('click', addPlayer);
+$('playerInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPlayer(); });
+
+function renderChips() {
+  $('chips').innerHTML = '';
+  players.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'chip';
+    el.innerHTML = `${p}<button class="chip-del" data-i="${i}">✕</button>`;
+    $('chips').appendChild(el);
+  });
+  $('startBtn').disabled = players.length < 3;
+}
+
+$('chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip-del');
+  if (!b) return;
+  players.splice(+b.dataset.i, 1);
+  localStorage.setItem('spy_players', JSON.stringify(players));
+  renderChips();
+  renderSpyBtns();
+});
+
+// Fisher-Yates shuffle — честный случайный порядок
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+$('startBtn').addEventListener('click', () => {
+  const pool = WORDS[selectedCat];
+  if (!pool) { $('err').textContent = 'Выбери категорию'; return; }
+  const word = pool[Math.floor(Math.random() * pool.length)];
+
+  // 1. Создаём массив объектов с именами
+  // 2. Перемешиваем порядок показа (Fisher-Yates)
+  // 3. Назначаем шпионов первым N в перемешанном массиве
+  const shuffled = shuffle(players.map(name => ({ name })));
+  gameData = shuffled.map((p, i) => ({
+    name:  p.name,
+    isSpy: i < spyCount,
+    word:  i < spyCount ? null : word,
+  }));
+
+  currentIdx = 0;
+  showPass(0);
+  show('pass');
+});
+
+// Инициализация при загрузке
+renderChips();
+renderSpyBtns();
+
+// ══ PASS ══
+function showPass(idx) {
+  $('passCounter').textContent = `Игрок ${idx + 1} из ${gameData.length}`;
+  $('passName').textContent = gameData[idx].name;
+}
+
+$('passBtn').addEventListener('click', () => {
+  showFlip(currentIdx);
+  show('flip');
+});
+
+// ══ FLIP ══
+function showFlip(idx) {
+  const p = gameData[idx];
+  cardFlipped = false;
+
+  $('cardBody').classList.remove('flipped');
+  $('nextBtn').classList.remove('visible');
+
+  $('progressFill').style.width = `${(idx / gameData.length) * 100}%`;
+  $('flipCounter').textContent  = `${idx + 1} / ${gameData.length}`;
+  $('flipName').textContent     = p.name;
+
+  const back = $('cardBack');
+  back.className = 'card-side card-back ' + (p.isSpy ? 'back-spy' : 'back-civ');
+  $('backIcon').textContent = p.isSpy ? '🕵️' : '😇';
+  $('backRole').textContent = p.isSpy ? 'Ты шпион!' : 'Мирный житель';
+  $('backWord').textContent = p.isSpy ? '???' : p.word;
+  $('backDesc').textContent = p.isSpy
+    ? 'Попробуй угадать слово и не раскройся'
+    : 'Запомни слово и найди шпиона';
+
+  // Текст кнопки: последний игрок → "Начать обсуждение", остальные → "Передать"
+  $('nextBtn').textContent = (idx === gameData.length - 1) ? 'Начать обсуждение →' : 'Передать →';
+}
+
+$('cardScene').addEventListener('click', () => {
+  if (cardFlipped) return;
+  cardFlipped = true;
+  $('cardBody').classList.add('flipped');
+  setTimeout(() => $('nextBtn').classList.add('visible'), 350);
+});
+
+$('nextBtn').addEventListener('click', () => {
+  currentIdx++;
+  if (currentIdx >= gameData.length) {
+    showDiscuss();
+    show('discuss');
+  } else {
+    showPass(currentIdx);
+    show('pass');
+  }
+});
+
+// ══ DISCUSS ══
+function pickQuestions(count) {
+  // берём вопросы которые ещё не показывали
+  let available = ALL_QUESTIONS.map((_, i) => i).filter(i => !usedQIndexes.includes(i));
+  // если закончились — сбрасываем
+  if (available.length < count) {
+    usedQIndexes = [];
+    available = ALL_QUESTIONS.map((_, i) => i);
+  }
+  // перемешиваем и берём нужное количество
+  for (let i = available.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [available[i], available[j]] = [available[j], available[i]];
+  }
+  const picked = available.slice(0, count);
+  usedQIndexes.push(...picked);
+  return picked.map(i => ALL_QUESTIONS[i]);
+}
+
+function renderQuestions() {
+  const grid = $('questionsGrid');
+  grid.innerHTML = '';
+  const qs = pickQuestions(4);
+  qs.forEach((q, i) => {
+    const card = document.createElement('div');
+    card.className = 'q-card';
+    card.style.animationDelay = `${i * 0.06}s`;
+    card.innerHTML = `<span class="q-num">${i + 1}</span><span class="q-text">${q}</span>`;
+    grid.appendChild(card);
+  });
+}
+
+function showDiscuss() {
+  usedQIndexes = [];
+  renderQuestions();
+}
+
+$('moreQBtn').addEventListener('click', renderQuestions);
+
+$('revealBtn').addEventListener('click', () => {
+  showEnd();
+  show('end');
+});
+
+// ══ END ══
+function showEnd() {
+  const word = gameData.find(p => !p.isSpy)?.word || '???';
+
+  $('endWord').textContent = word;
+  const spies = gameData.filter(p => p.isSpy).map(p => p.name);
+  $('endTitle').textContent = spies.length > 1
+    ? `Шпионы — ${spies.join(' и ')}!`
+    : `Шпион — ${spies[0]}!`;
+
+  const list = $('resultList');
+  list.innerHTML = '';
+  gameData.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.className = 'result-row' + (p.isSpy ? ' is-spy' : '');
+    row.style.animationDelay = `${i * 0.07}s`;
+    row.innerHTML = `
+      <span class="result-emo">${p.isSpy ? '🕵️' : '😇'}</span>
+      <span class="result-name">${p.name}</span>
+      <span class="result-badge">${p.isSpy ? 'Шпион' : 'Мирный'}</span>
+    `;
+    list.appendChild(row);
+  });
+}
+
+$('restartBtn').addEventListener('click', () => {
+  // Игроки сохраняются! Только сбрасываем игровые данные
+  gameData = []; currentIdx = 0;
+  renderChips();
+  renderSpyBtns();
+  $('err').textContent = '';
+  show('setup');
+});
+</script>
+</body>
+</html>
