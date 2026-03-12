@@ -698,30 +698,14 @@ input[type="text"]::placeholder { color: var(--muted); }
 </div>
 
 <script>
-// ══ ДАННЫЕ ══
+// ══ СЛОВА ══
 const WORDS = {
-  easy: [
-    'Баг','Деплой','Апдейт','Бэкап','Дедлайн','Спринт','Митинг','Логин','Пароль',
-    'Интерфейс','Сервер','Клиент','База данных','Поиск','Фильтр','Уведомление',
-    'Профиль','Настройки','Загрузка','Ошибка','Версия','Лицензия','Подписка',
-    'Облако','Кэш','Токен','Сессия','Куки','Форма','Кнопка',
-  ],
-  medium: [
-    'Ретроспектива','Стендап','Код-ревью','Пул-реквест','Бэклог','Релиз','Хотфикс',
-    'Рефакторинг','Тест','Стейджинг','Продакшн','Мёрдж','Бранч','Коммит','Тикет',
-    'Эпик','Velocity','Roadmap','Онбординг','Оффбординг','Перформанс-ревью',
-    'Технический долг','MVP','A/B тест','Фича','Кранч','Митинг-культура',
-    'Документация','Мониторинг','Алерт',
-  ],
-  hard: [
-    'Дедлок','Гонка данных','Мемори-лик','Хип','Стек','Мьютекс','Семафор',
-    'Big O','Рекурсия','Хэш-коллизия','Шардинг','Репликация','Индекс','Транзакция',
-    'ACID','CAP-теорема','Eventual consistency','Инверсия зависимостей','Полиморфизм',
-    'Дженерики','Замыкание','Карри','Монада','Иммутабельность','Event loop',
-    'Промис','Middleware','Сериализация','Десериализация','Оркестрация',
-  ],
+  easy: ['Баг','Деплой','Апдейт','Бэкап','Дедлайн','Спринт','Митинг','Логин','Пароль','Интерфейс','Сервер','Клиент','База данных','Поиск','Фильтр','Уведомление','Профиль','Настройки','Загрузка','Ошибка','Версия','Лицензия','Подписка','Облако','Кэш','Токен','Сессия','Куки','Форма','Кнопка'],
+  medium: ['Ретроспектива','Стендап','Код-ревью','Пул-реквест','Бэклог','Релиз','Хотфикс','Рефакторинг','Тест','Стейджинг','Продакшн','Мёрдж','Бранч','Коммит','Тикет','Эпик','Velocity','Roadmap','Онбординг','Оффбординг','Перформанс-ревью','Технический долг','MVP','A/B тест','Фича','Кранч','Митинг-культура','Документация','Мониторинг','Алерт'],
+  hard: ['Дедлок','Гонка данных','Мемори-лик','Хип','Стек','Мьютекс','Семафор','Big O','Рекурсия','Хэш-коллизия','Шардинг','Репликация','Индекс','Транзакция','ACID','CAP-теорема','Eventual consistency','Инверсия зависимостей','Полиморфизм','Дженерики','Замыкание','Карри','Монада','Иммутабельность','Event loop','Промис','Middleware','Сериализация','Десериализация','Оркестрация'],
 };
 
+// ══ ВОПРОСЫ ══
 const ALL_QUESTIONS = [
   'Опиши это одним словом, но не называй напрямую.',
   'Какой эмодзи лучше всего описывает это?',
@@ -738,7 +722,7 @@ const ALL_QUESTIONS = [
   'Это существовало 20 лет назад?',
   'Это актуально прямо сейчас в индустрии?',
   'Это связано с началом проекта или его концом?',
-  'Кто в команде чаще всего работает с этим — разраб, менеджер или дизайнер?',
+  'Кто чаще работает с этим — разраб, менеджер или дизайнер?',
   'Это делается в одиночку или командой?',
   'Это вызывает споры в команде?',
   'Junior знает об этом или только Senior?',
@@ -756,7 +740,7 @@ const ALL_QUESTIONS = [
   'Это часть Agile или Waterfall?',
   'Это происходит на ежедневном стендапе?',
   'Это связано с оценкой задач?',
-  'Это фиксируется в Jira или похожем трекере?',
+  'Это фиксируется в Jira?',
   'Это помогает команде или замедляет её?',
   'Это происходит в конце спринта?',
   'Это относится к управлению продуктом?',
@@ -770,7 +754,6 @@ const ALL_QUESTIONS = [
   'Это вызывает у тебя радость или боль?',
   'Это часто откладывают на потом?',
   'Это обсуждают на конференциях?',
-  'Это есть в любой айти компании?',
   'Это стало мемом в программистском комьюнити?',
   'Про это написаны книги?',
   'Это чаще делают правильно или неправильно?',
@@ -783,46 +766,69 @@ const ALL_QUESTIONS = [
   'Это делает код лучше или только кажется?',
 ];
 
-// ══ СОСТОЯНИЕ ══
-// players живут в localStorage, всё остальное — чистое каждую игру
-let players     = JSON.parse(localStorage.getItem('spy_players') || '[]');
-let selectedCat = 'easy';
-let spyCount    = 1;
-
-// игровые переменные — сбрасываются в startGame()
-let gameData    = [];
-let currentIdx  = 0;
-let cardFlipped = false;
-let usedQ       = [];
-
-// ══ HELPERS ══
+// ══ УТИЛИТЫ ══
 const $ = id => document.getElementById(id);
 
-const SCREENS = ['setup','pass','flip','discuss','end'];
-function show(name) {
-  SCREENS.forEach(k => $(k).classList.toggle('hidden', k !== name));
-}
-
-// Честный Fisher-Yates — возвращает новый перемешанный массив
 function shuffle(arr) {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    const t = a[i]; a[i] = a[j]; a[j] = t;
   }
   return a;
 }
 
-// ══ SETUP — категории ══
-$('catTabs').addEventListener('click', e => {
-  const t = e.target.closest('.cat-tab');
-  if (!t) return;
-  document.querySelectorAll('.cat-tab').forEach(x => x.classList.remove('active'));
-  t.classList.add('active');
-  selectedCat = t.dataset.cat;
-});
+const SCREEN_IDS = ['setup','pass','flip','discuss','end'];
+function show(id) {
+  SCREEN_IDS.forEach(k => $(k).classList.toggle('hidden', k !== id));
+}
 
-// ══ SETUP — кол-во шпионов ══
+// ══ НАСТРОЙКИ (сохраняются) ══
+let players     = JSON.parse(localStorage.getItem('spy_players') || '[]');
+let selectedCat = 'easy';
+let spyCount    = 1;
+
+// ══ ИГРОВОЕ СОСТОЯНИЕ (пересоздаётся каждую игру) ══
+let game = null;  // { list, idx, flipped, usedQ }
+
+function createGame() {
+  const pool = WORDS[selectedCat];
+  if (!pool) return false;
+
+  const word = pool[Math.floor(Math.random() * pool.length)];
+
+  // Шаг 1: случайный порядок имён
+  const order = shuffle(players);
+
+  // Шаг 2: назначаем роли — первые N шпионы
+  const withRoles = order.map((name, i) => ({
+    name,
+    isSpy: i < spyCount,
+    word:  i < spyCount ? null : word,
+  }));
+
+  // Шаг 3: перемешиваем ЕЩЁ РАЗ — шпион не будет предсказуемо первым
+  game = {
+    list:    shuffle(withRoles),
+    idx:     0,
+    flipped: false,
+    usedQ:   [],
+  };
+  return true;
+}
+
+// ══ SETUP — рендер ══
+function renderChips() {
+  $('chips').innerHTML = '';
+  players.forEach((name, i) => {
+    const el = document.createElement('div');
+    el.className = 'chip';
+    el.innerHTML = `${name}<button class="chip-del" data-i="${i}">✕</button>`;
+    $('chips').appendChild(el);
+  });
+  $('startBtn').disabled = players.length < 3;
+}
+
 function renderSpyBtns() {
   const row = $('spyCountRow');
   row.innerHTML = '';
@@ -837,6 +843,21 @@ function renderSpyBtns() {
   }
 }
 
+function syncStorage() {
+  localStorage.setItem('spy_players', JSON.stringify(players));
+  renderChips();
+  renderSpyBtns();
+}
+
+// ══ SETUP — события ══
+$('catTabs').addEventListener('click', e => {
+  const t = e.target.closest('.cat-tab');
+  if (!t) return;
+  document.querySelectorAll('.cat-tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  selectedCat = t.dataset.cat;
+});
+
 $('spyCountRow').addEventListener('click', e => {
   const btn = e.target.closest('.spy-btn');
   if (!btn) return;
@@ -845,13 +866,6 @@ $('spyCountRow').addEventListener('click', e => {
     b.classList.toggle('active', +b.dataset.n === spyCount)
   );
 });
-
-// ══ SETUP — игроки ══
-function saveAndRender() {
-  localStorage.setItem('spy_players', JSON.stringify(players));
-  renderChips();
-  renderSpyBtns();
-}
 
 function addPlayer() {
   const name = $('playerInput').value.trim();
@@ -862,191 +876,149 @@ function addPlayer() {
   players.push(name);
   $('playerInput').value = '';
   $('playerInput').focus();
-  saveAndRender();
+  syncStorage();
 }
-
 $('addBtn').addEventListener('click', addPlayer);
 $('playerInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPlayer(); });
-
-function renderChips() {
-  $('chips').innerHTML = '';
-  players.forEach((name, i) => {
-    const el = document.createElement('div');
-    el.className = 'chip';
-    el.innerHTML = `${name}<button class="chip-del" data-i="${i}">✕</button>`;
-    $('chips').appendChild(el);
-  });
-  $('startBtn').disabled = players.length < 3;
-}
 
 $('chips').addEventListener('click', e => {
   const b = e.target.closest('.chip-del');
   if (!b) return;
   players.splice(+b.dataset.i, 1);
-  saveAndRender();
+  syncStorage();
 });
 
-// ══ START ══
-$('startBtn').addEventListener('click', startGame);
+$('startBtn').addEventListener('click', () => {
+  $('err').textContent = '';
+  if (!createGame()) { $('err').textContent = 'Выбери категорию'; return; }
+  showPass();
+});
 
-function startGame() {
-  const pool = WORDS[selectedCat];
-  if (!pool || !pool.length) { $('err').textContent = 'Выбери категорию'; return; }
-
-  // Случайное слово
-  const word = pool[Math.floor(Math.random() * pool.length)];
-
-  // Перемешиваем имена — теперь порядок показа случайный каждый раз
-  const shuffledNames = shuffle(players);
-
-  // Первые spyCount в перемешанном массиве — шпионы
-  // Всё остальное — мирные
-  gameData = shuffledNames.map((name, i) => ({
-    name,
-    isSpy: i < spyCount,
-    word:  i < spyCount ? null : word,
-  }));
-
-  // Сбрасываем игровые переменные
-  currentIdx  = 0;
-  cardFlipped = false;
-  usedQ       = [];
-
-  showPass(0);
+// ══ PASS ══
+function showPass() {
+  const p = game.list[game.idx];
+  $('passCounter').textContent = `Игрок ${game.idx + 1} из ${game.list.length}`;
+  $('passName').textContent    = p.name;
   show('pass');
 }
 
-// ══ PASS ══
-function showPass(idx) {
-  $('passCounter').textContent = `Игрок ${idx + 1} из ${gameData.length}`;
-  $('passName').textContent    = gameData[idx].name;
-}
-
-$('passBtn').addEventListener('click', () => {
-  showFlip(currentIdx);
-  show('flip');
-});
+$('passBtn').addEventListener('click', () => showFlip());
 
 // ══ FLIP ══
-function showFlip(idx) {
-  const p = gameData[idx];
-  cardFlipped = false;
+function showFlip() {
+  const p    = game.list[game.idx];
+  game.flipped = false;
 
-  // Сбрасываем карточку — убираем flip и кнопку
+  // Мгновенный сброс карточки через reflow
   const body = $('cardBody');
-  // Сначала убираем transition чтобы сброс был мгновенным
   body.style.transition = 'none';
   body.classList.remove('flipped');
+  void body.offsetWidth;            // принудительный reflow
+  body.style.transition = '';
+
   $('nextBtn').classList.remove('visible');
 
-  // Возвращаем transition обратно через следующий кадр
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      body.style.transition = '';
-    });
-  });
-
   // Прогресс
-  $('progressFill').style.width = `${(idx / gameData.length) * 100}%`;
-  $('flipCounter').textContent  = `${idx + 1} / ${gameData.length}`;
+  const pct = (game.idx / game.list.length) * 100;
+  $('progressFill').style.width = pct + '%';
+  $('flipCounter').textContent  = (game.idx + 1) + ' / ' + game.list.length;
   $('flipName').textContent     = p.name;
 
-  // Обратная сторона карточки
-  const back = $('cardBack');
-  back.className        = 'card-side card-back ' + (p.isSpy ? 'back-spy' : 'back-civ');
-  $('backIcon').textContent = p.isSpy ? '🕵️' : '😇';
-  $('backRole').textContent = p.isSpy ? 'Ты шпион!' : 'Мирный житель';
-  $('backWord').textContent = p.isSpy ? '???' : p.word;
-  $('backDesc').textContent = p.isSpy
+  // Обратная сторона
+  $('cardBack').className       = 'card-side card-back ' + (p.isSpy ? 'back-spy' : 'back-civ');
+  $('backIcon').textContent     = p.isSpy ? '🕵️' : '😇';
+  $('backRole').textContent     = p.isSpy ? 'Ты шпион!' : 'Мирный житель';
+  $('backWord').textContent     = p.isSpy ? '???' : p.word;
+  $('backDesc').textContent     = p.isSpy
     ? 'Попробуй угадать слово и не раскройся'
     : 'Запомни слово и найди шпиона';
 
-  $('nextBtn').textContent = (idx === gameData.length - 1)
-    ? 'Начать обсуждение →'
-    : 'Передать →';
+  $('nextBtn').textContent = (game.idx === game.list.length - 1)
+    ? 'Начать обсуждение →' : 'Передать →';
+
+  show('flip');
 }
 
 $('cardScene').addEventListener('click', () => {
-  if (cardFlipped) return;
-  cardFlipped = true;
+  if (!game || game.flipped) return;
+  game.flipped = true;
   $('cardBody').classList.add('flipped');
   setTimeout(() => $('nextBtn').classList.add('visible'), 350);
 });
 
 $('nextBtn').addEventListener('click', () => {
-  currentIdx++;
-  if (currentIdx >= gameData.length) {
+  if (!game) return;
+  game.idx++;
+  if (game.idx >= game.list.length) {
     showDiscuss();
-    show('discuss');
   } else {
-    showPass(currentIdx);
-    show('pass');
+    showPass();
   }
 });
 
 // ══ DISCUSS ══
-function pickQuestions(count) {
-  let pool = ALL_QUESTIONS.map((_, i) => i).filter(i => !usedQ.includes(i));
-  if (pool.length < count) { usedQ = []; pool = ALL_QUESTIONS.map((_, i) => i); }
-  const picked = shuffle(pool).slice(0, count);
-  usedQ.push(...picked);
+function pickQ(n) {
+  let pool = ALL_QUESTIONS.map((_, i) => i).filter(i => !game.usedQ.includes(i));
+  if (pool.length < n) { game.usedQ = []; pool = ALL_QUESTIONS.map((_, i) => i); }
+  const picked = shuffle(pool).slice(0, n);
+  game.usedQ.push(...picked);
   return picked.map(i => ALL_QUESTIONS[i]);
 }
 
-function renderQuestions() {
+function renderQ() {
   const grid = $('questionsGrid');
   grid.innerHTML = '';
-  pickQuestions(4).forEach((q, i) => {
+  pickQ(4).forEach((q, i) => {
     const card = document.createElement('div');
     card.className = 'q-card';
-    card.style.animationDelay = `${i * 0.06}s`;
-    card.innerHTML = `<span class="q-num">${i + 1}</span><span class="q-text">${q}</span>`;
+    card.style.animationDelay = (i * 0.06) + 's';
+    card.innerHTML = `<span class="q-num">${i+1}</span><span class="q-text">${q}</span>`;
     grid.appendChild(card);
   });
 }
 
 function showDiscuss() {
-  usedQ = [];
-  renderQuestions();
+  game.usedQ = [];
+  renderQ();
+  show('discuss');
 }
 
-$('moreQBtn').addEventListener('click', renderQuestions);
-$('revealBtn').addEventListener('click', () => { showEnd(); show('end'); });
+$('moreQBtn').addEventListener('click', renderQ);
+$('revealBtn').addEventListener('click', showEnd);
 
 // ══ END ══
 function showEnd() {
-  const word  = gameData.find(p => !p.isSpy)?.word || '???';
-  const spies = gameData.filter(p => p.isSpy).map(p => p.name);
+  const word  = game.list.find(p => !p.isSpy)?.word || '???';
+  const spies = game.list.filter(p => p.isSpy).map(p => p.name);
 
   $('endWord').textContent  = word;
   $('endTitle').textContent = spies.length > 1
-    ? `Шпионы — ${spies.join(' и ')}!`
-    : `Шпион — ${spies[0]}!`;
+    ? 'Шпионы — ' + spies.join(' и ') + '!'
+    : 'Шпион — ' + spies[0] + '!';
 
   const list = $('resultList');
   list.innerHTML = '';
-  gameData.forEach((p, i) => {
+  game.list.forEach((p, i) => {
     const row = document.createElement('div');
     row.className = 'result-row' + (p.isSpy ? ' is-spy' : '');
-    row.style.animationDelay = `${i * 0.07}s`;
-    row.innerHTML = `
-      <span class="result-emo">${p.isSpy ? '🕵️' : '😇'}</span>
-      <span class="result-name">${p.name}</span>
-      <span class="result-badge">${p.isSpy ? 'Шпион' : 'Мирный'}</span>
-    `;
+    row.style.animationDelay = (i * 0.07) + 's';
+    row.innerHTML =
+      '<span class="result-emo">' + (p.isSpy ? '🕵️' : '😇') + '</span>' +
+      '<span class="result-name">' + p.name + '</span>' +
+      '<span class="result-badge">' + (p.isSpy ? 'Шпион' : 'Мирный') + '</span>';
     list.appendChild(row);
   });
+
+  show('end');
 }
 
-// ══ RESTART — игроки остаются, всё остальное сбрасывается ══
+// ══ RESTART ══
 $('restartBtn').addEventListener('click', () => {
-  gameData   = [];
-  currentIdx = 0;
-  usedQ      = [];
+  game = null;                    // убиваем игровое состояние
   $('err').textContent = '';
   renderChips();
   renderSpyBtns();
-  show('setup');
+  show('setup');                  // возвращаемся на настройки
 });
 
 // ══ INIT ══
