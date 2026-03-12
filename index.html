@@ -15,7 +15,6 @@
   --card-bg: #1a1a26;
   --accent: #c8f04d;
   --accent2: #f04d8a;
-  
   --spy-color: #f04d4d;
   --text: #f0f0f5;
   --muted: #6b6b80;
@@ -700,8 +699,6 @@ input[type="text"]::placeholder { color: var(--muted); }
 
 <script>
 // ══ ДАННЫЕ ══
-
-// Категории: easy = базовые IT-понятия (знает любой), medium = процессы/культура, hard = хардкор для разрабов
 const WORDS = {
   easy: [
     'Баг','Деплой','Апдейт','Бэкап','Дедлайн','Спринт','Митинг','Логин','Пароль',
@@ -725,9 +722,7 @@ const WORDS = {
   ],
 };
 
-// 60 вопросов — IT-тематика, подходят для любого уровня
 const ALL_QUESTIONS = [
-  // 🔎 Описание / ассоциации
   'Опиши это одним словом, но не называй напрямую.',
   'Какой эмодзи лучше всего описывает это?',
   'Это ближе к фронтенду или бэкенду?',
@@ -738,22 +733,16 @@ const ALL_QUESTIONS = [
   'Назови одно прилагательное которое это лучше всего описывает.',
   'Это ты встречаешь каждый день или редко?',
   'Это что-то видимое пользователю или скрытое внутри?',
-
-  // ⏱️ Время / частота
   'Это происходит быстро или требует времени?',
   'Это случается до деплоя или после?',
   'Это существовало 20 лет назад?',
   'Это актуально прямо сейчас в индустрии?',
   'Это связано с началом проекта или его концом?',
-
-  // 🧑‍💻 Люди / команда
   'Кто в команде чаще всего работает с этим — разраб, менеджер или дизайнер?',
   'Это делается в одиночку или командой?',
   'Это вызывает споры в команде?',
   'Junior знает об этом или только Senior?',
   'Это есть в описании вакансий?',
-
-  // 💻 Технические
   'Это связано с производительностью?',
   'Это может сломать прод?',
   'Это требует написания кода или нет?',
@@ -764,8 +753,6 @@ const ALL_QUESTIONS = [
   'Это можно протестировать автотестом?',
   'Это есть в любом языке программирования?',
   'Это есть в git?',
-
-  // 📋 Процессы / Agile
   'Это часть Agile или Waterfall?',
   'Это происходит на ежедневном стендапе?',
   'Это связано с оценкой задач?',
@@ -774,16 +761,12 @@ const ALL_QUESTIONS = [
   'Это происходит в конце спринта?',
   'Это относится к управлению продуктом?',
   'Это делается ради качества или ради скорости?',
-
-  // 🌐 Инфраструктура / DevOps
   'Это связано с деплоем?',
   'Это есть в облаке?',
   'Это нужно настраивать вручную или автоматически?',
   'Это связано с безопасностью?',
   'Это мониторится в реальном времени?',
   'Это может упасть в 3 часа ночи?',
-
-  // 😅 Эмоции / культура
   'Это вызывает у тебя радость или боль?',
   'Это часто откладывают на потом?',
   'Это обсуждают на конференциях?',
@@ -792,8 +775,6 @@ const ALL_QUESTIONS = [
   'Про это написаны книги?',
   'Это чаще делают правильно или неправильно?',
   'Это есть в резюме хорошего разработчика?',
-
-  // 🤔 Угадайка / логика
   'Если убрать это — что сломается первым?',
   'Это причина или следствие бага?',
   'Без этого невозможно запустить продакшн?',
@@ -803,23 +784,36 @@ const ALL_QUESTIONS = [
 ];
 
 // ══ СОСТОЯНИЕ ══
-let players      = JSON.parse(localStorage.getItem('spy_players') || '[]');
-let selectedCat  = 'easy';
-let spyCount     = 1;
-let gameData     = [];
-let currentIdx   = 0;
-let cardFlipped  = false;
-let usedQIndexes = [];
+// players живут в localStorage, всё остальное — чистое каждую игру
+let players     = JSON.parse(localStorage.getItem('spy_players') || '[]');
+let selectedCat = 'easy';
+let spyCount    = 1;
 
+// игровые переменные — сбрасываются в startGame()
+let gameData    = [];
+let currentIdx  = 0;
+let cardFlipped = false;
+let usedQ       = [];
+
+// ══ HELPERS ══
 const $ = id => document.getElementById(id);
 
-const screens = { setup: $('setup'), pass: $('pass'), flip: $('flip'), discuss: $('discuss'), end: $('end') };
-
+const SCREENS = ['setup','pass','flip','discuss','end'];
 function show(name) {
-  Object.entries(screens).forEach(([k, el]) => el.classList.toggle('hidden', k !== name));
+  SCREENS.forEach(k => $(k).classList.toggle('hidden', k !== name));
 }
 
-// ══ SETUP ══
+// Честный Fisher-Yates — возвращает новый перемешанный массив
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+// ══ SETUP — категории ══
 $('catTabs').addEventListener('click', e => {
   const t = e.target.closest('.cat-tab');
   if (!t) return;
@@ -828,18 +822,17 @@ $('catTabs').addEventListener('click', e => {
   selectedCat = t.dataset.cat;
 });
 
-// Spy count buttons — рендерим динамически в зависимости от числа игроков
+// ══ SETUP — кол-во шпионов ══
 function renderSpyBtns() {
   const row = $('spyCountRow');
   row.innerHTML = '';
-  // максимум шпионов = половина игроков, но не больше 3
-  const max = Math.min(3, Math.floor(players.length / 2)) || 1;
+  const max = Math.max(1, Math.min(3, Math.floor(players.length / 2)));
   if (spyCount > max) spyCount = 1;
-  for (let i = 1; i <= max; i++) {
+  for (let n = 1; n <= max; n++) {
     const btn = document.createElement('button');
-    btn.className = 'spy-btn' + (i === spyCount ? ' active' : '');
-    btn.textContent = i === 1 ? '1 шпион' : `${i} шпиона`;
-    btn.dataset.n = i;
+    btn.className = 'spy-btn' + (n === spyCount ? ' active' : '');
+    btn.textContent = n === 1 ? '1 шпион' : n + ' шпиона';
+    btn.dataset.n = n;
     row.appendChild(btn);
   }
 }
@@ -848,8 +841,17 @@ $('spyCountRow').addEventListener('click', e => {
   const btn = e.target.closest('.spy-btn');
   if (!btn) return;
   spyCount = +btn.dataset.n;
-  document.querySelectorAll('.spy-btn').forEach(b => b.classList.toggle('active', +b.dataset.n === spyCount));
+  document.querySelectorAll('.spy-btn').forEach(b =>
+    b.classList.toggle('active', +b.dataset.n === spyCount)
+  );
 });
+
+// ══ SETUP — игроки ══
+function saveAndRender() {
+  localStorage.setItem('spy_players', JSON.stringify(players));
+  renderChips();
+  renderSpyBtns();
+}
 
 function addPlayer() {
   const name = $('playerInput').value.trim();
@@ -858,11 +860,9 @@ function addPlayer() {
   if (players.includes(name)) { $('err').textContent = 'Такой игрок уже есть'; return; }
   if (players.length >= 10)   { $('err').textContent = 'Максимум 10 игроков'; return; }
   players.push(name);
-  localStorage.setItem('spy_players', JSON.stringify(players));
   $('playerInput').value = '';
   $('playerInput').focus();
-  renderChips();
-  renderSpyBtns();
+  saveAndRender();
 }
 
 $('addBtn').addEventListener('click', addPlayer);
@@ -870,10 +870,10 @@ $('playerInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPl
 
 function renderChips() {
   $('chips').innerHTML = '';
-  players.forEach((p, i) => {
+  players.forEach((name, i) => {
     const el = document.createElement('div');
     el.className = 'chip';
-    el.innerHTML = `${p}<button class="chip-del" data-i="${i}">✕</button>`;
+    el.innerHTML = `${name}<button class="chip-del" data-i="${i}">✕</button>`;
     $('chips').appendChild(el);
   });
   $('startBtn').disabled = players.length < 3;
@@ -883,49 +883,43 @@ $('chips').addEventListener('click', e => {
   const b = e.target.closest('.chip-del');
   if (!b) return;
   players.splice(+b.dataset.i, 1);
-  localStorage.setItem('spy_players', JSON.stringify(players));
-  renderChips();
-  renderSpyBtns();
+  saveAndRender();
 });
 
-// Fisher-Yates shuffle — честный случайный порядок
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+// ══ START ══
+$('startBtn').addEventListener('click', startGame);
 
-$('startBtn').addEventListener('click', () => {
+function startGame() {
   const pool = WORDS[selectedCat];
-  if (!pool) { $('err').textContent = 'Выбери категорию'; return; }
+  if (!pool || !pool.length) { $('err').textContent = 'Выбери категорию'; return; }
+
+  // Случайное слово
   const word = pool[Math.floor(Math.random() * pool.length)];
 
-  // 1. Создаём массив объектов с именами
-  // 2. Перемешиваем порядок показа (Fisher-Yates)
-  // 3. Назначаем шпионов первым N в перемешанном массиве
-  const shuffled = shuffle(players.map(name => ({ name })));
-  gameData = shuffled.map((p, i) => ({
-    name:  p.name,
+  // Перемешиваем имена — теперь порядок показа случайный каждый раз
+  const shuffledNames = shuffle(players);
+
+  // Первые spyCount в перемешанном массиве — шпионы
+  // Всё остальное — мирные
+  gameData = shuffledNames.map((name, i) => ({
+    name,
     isSpy: i < spyCount,
     word:  i < spyCount ? null : word,
   }));
 
-  currentIdx = 0;
+  // Сбрасываем игровые переменные
+  currentIdx  = 0;
+  cardFlipped = false;
+  usedQ       = [];
+
   showPass(0);
   show('pass');
-});
-
-// Инициализация при загрузке
-renderChips();
-renderSpyBtns();
+}
 
 // ══ PASS ══
 function showPass(idx) {
   $('passCounter').textContent = `Игрок ${idx + 1} из ${gameData.length}`;
-  $('passName').textContent = gameData[idx].name;
+  $('passName').textContent    = gameData[idx].name;
 }
 
 $('passBtn').addEventListener('click', () => {
@@ -938,15 +932,28 @@ function showFlip(idx) {
   const p = gameData[idx];
   cardFlipped = false;
 
-  $('cardBody').classList.remove('flipped');
+  // Сбрасываем карточку — убираем flip и кнопку
+  const body = $('cardBody');
+  // Сначала убираем transition чтобы сброс был мгновенным
+  body.style.transition = 'none';
+  body.classList.remove('flipped');
   $('nextBtn').classList.remove('visible');
 
+  // Возвращаем transition обратно через следующий кадр
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      body.style.transition = '';
+    });
+  });
+
+  // Прогресс
   $('progressFill').style.width = `${(idx / gameData.length) * 100}%`;
   $('flipCounter').textContent  = `${idx + 1} / ${gameData.length}`;
   $('flipName').textContent     = p.name;
 
+  // Обратная сторона карточки
   const back = $('cardBack');
-  back.className = 'card-side card-back ' + (p.isSpy ? 'back-spy' : 'back-civ');
+  back.className        = 'card-side card-back ' + (p.isSpy ? 'back-spy' : 'back-civ');
   $('backIcon').textContent = p.isSpy ? '🕵️' : '😇';
   $('backRole').textContent = p.isSpy ? 'Ты шпион!' : 'Мирный житель';
   $('backWord').textContent = p.isSpy ? '???' : p.word;
@@ -954,8 +961,9 @@ function showFlip(idx) {
     ? 'Попробуй угадать слово и не раскройся'
     : 'Запомни слово и найди шпиона';
 
-  // Текст кнопки: последний игрок → "Начать обсуждение", остальные → "Передать"
-  $('nextBtn').textContent = (idx === gameData.length - 1) ? 'Начать обсуждение →' : 'Передать →';
+  $('nextBtn').textContent = (idx === gameData.length - 1)
+    ? 'Начать обсуждение →'
+    : 'Передать →';
 }
 
 $('cardScene').addEventListener('click', () => {
@@ -978,28 +986,17 @@ $('nextBtn').addEventListener('click', () => {
 
 // ══ DISCUSS ══
 function pickQuestions(count) {
-  // берём вопросы которые ещё не показывали
-  let available = ALL_QUESTIONS.map((_, i) => i).filter(i => !usedQIndexes.includes(i));
-  // если закончились — сбрасываем
-  if (available.length < count) {
-    usedQIndexes = [];
-    available = ALL_QUESTIONS.map((_, i) => i);
-  }
-  // перемешиваем и берём нужное количество
-  for (let i = available.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [available[i], available[j]] = [available[j], available[i]];
-  }
-  const picked = available.slice(0, count);
-  usedQIndexes.push(...picked);
+  let pool = ALL_QUESTIONS.map((_, i) => i).filter(i => !usedQ.includes(i));
+  if (pool.length < count) { usedQ = []; pool = ALL_QUESTIONS.map((_, i) => i); }
+  const picked = shuffle(pool).slice(0, count);
+  usedQ.push(...picked);
   return picked.map(i => ALL_QUESTIONS[i]);
 }
 
 function renderQuestions() {
   const grid = $('questionsGrid');
   grid.innerHTML = '';
-  const qs = pickQuestions(4);
-  qs.forEach((q, i) => {
+  pickQuestions(4).forEach((q, i) => {
     const card = document.createElement('div');
     card.className = 'q-card';
     card.style.animationDelay = `${i * 0.06}s`;
@@ -1009,23 +1006,19 @@ function renderQuestions() {
 }
 
 function showDiscuss() {
-  usedQIndexes = [];
+  usedQ = [];
   renderQuestions();
 }
 
 $('moreQBtn').addEventListener('click', renderQuestions);
-
-$('revealBtn').addEventListener('click', () => {
-  showEnd();
-  show('end');
-});
+$('revealBtn').addEventListener('click', () => { showEnd(); show('end'); });
 
 // ══ END ══
 function showEnd() {
-  const word = gameData.find(p => !p.isSpy)?.word || '???';
-
-  $('endWord').textContent = word;
+  const word  = gameData.find(p => !p.isSpy)?.word || '???';
   const spies = gameData.filter(p => p.isSpy).map(p => p.name);
+
+  $('endWord').textContent  = word;
   $('endTitle').textContent = spies.length > 1
     ? `Шпионы — ${spies.join(' и ')}!`
     : `Шпион — ${spies[0]}!`;
@@ -1045,14 +1038,20 @@ function showEnd() {
   });
 }
 
+// ══ RESTART — игроки остаются, всё остальное сбрасывается ══
 $('restartBtn').addEventListener('click', () => {
-  // Игроки сохраняются! Только сбрасываем игровые данные
-  gameData = []; currentIdx = 0;
+  gameData   = [];
+  currentIdx = 0;
+  usedQ      = [];
+  $('err').textContent = '';
   renderChips();
   renderSpyBtns();
-  $('err').textContent = '';
   show('setup');
 });
+
+// ══ INIT ══
+renderChips();
+renderSpyBtns();
 </script>
 </body>
 </html>
